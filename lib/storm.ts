@@ -61,7 +61,6 @@ export function cleanupLine(lineId: number) {
   unwrapSpans(`[data-storm-weight][data-storm-line="${lineId}"]`)
   unwrapSpans(`[data-storm-size][data-storm-line="${lineId}"]`)
   restoreParas(`[data-storm-para][data-storm-line="${lineId}"]`)
-  // bg style element is reused each beat — removed only on cleanupAll
 }
 
 export function cleanupAll() {
@@ -130,14 +129,6 @@ export class StormChain {
 
   constructor(lineId = 0) {
     this._lineId = lineId
-  }
-
-  /** Set execution mode for this line (persists in store across beats). */
-  setRunMode(mode: string): this {
-    const m: RunMode = mode === "seq" ? "seq" : "random"
-    seqFor(this._lineId).mode = m
-    this.log.push(`run(${m})`)
-    return this
   }
 
   // ── Selectors ──────────────────────────────────────────────

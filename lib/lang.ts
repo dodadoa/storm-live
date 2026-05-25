@@ -32,12 +32,19 @@ function parseScalar(token: string): Arg {
   return token
 }
 
-/** `rand min max` consumes 3 tokens and resolves to a float in [min, max). */
+/**
+ * Resolve raw tokens into argument values.
+ * - `rand min max` → random float in [min, max), consumes 3 tokens
+ * - `seq` / `random` → mode keywords, skipped (handled by pre-scan)
+ */
 function parseArgs(tokens: string[]): Arg[] {
   const args: Arg[] = []
   let i = 0
   while (i < tokens.length) {
-    if (tokens[i].toLowerCase() === "rand") {
+    const t = tokens[i].toLowerCase()
+    if (t === "seq" || t === "random") {
+      i++
+    } else if (t === "rand") {
       const min = Number(tokens[i + 1] ?? 0)
       const max = Number(tokens[i + 2] ?? 1)
       args.push(min + Math.random() * (max - min))
@@ -70,7 +77,6 @@ function parseStep(raw: string): Step | null {
 type Dispatcher = (chain: StormChain, args: Arg[]) => void
 
 const DISPATCH: Record<string, Dispatcher> = {
-  run: (c, [mode = "random"]) => c.setRunMode(mode as string),
   text: (c, [p = 1]) => c.texts(p as number),
   paragraph: (c, [p = 1]) => c.paragraphs(p as number),
   bg: (c) => c.bg(),
@@ -80,7 +86,7 @@ const DISPATCH: Record<string, Dispatcher> = {
   color: (c, [r = 100, g = 0, b = 0]) =>
     c.setColor(r as number, g as number, b as number),
   weight: (c, [v = 400]) => c.weight(v as number),
-  size: (c, [v = 16]) => c.size(v as number)
+  size: (c, [v = 16]) => c.size(v as number),
 }
 
 const INIT_TOKENS = new Set(["storm"])
@@ -96,11 +102,12 @@ function stopAllBeats() {
 }
 
 function runLine(steps: Step[], lineId: number): { output: string; error?: string } {
-  // Pre-scan: set run mode BEFORE selectors execute (run may appear after selector in pipe)
+  // Pre-scan: detect seq/random suffix on any manipulator step
   for (const step of steps) {
-    if (step.name === "run") {
-      const arg = parseArgs(step.tokens)[0]
-      setLineMode(lineId, arg === "seq" ? "seq" : "random")
+    const last = step.tokens.at(-1)?.toLowerCase()
+    if (last === "seq" || last === "random") {
+      setLineMode(lineId, last)
+      break
     }
   }
 
